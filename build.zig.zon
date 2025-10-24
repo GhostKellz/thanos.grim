@@ -33,7 +33,8 @@
     // internet connectivity.
     .dependencies = .{
         .thanos = .{
-            .path = "../../projects/thanos",
+            .url = "https://github.com/ghostkellz/thanos/archive/refs/heads/main.tar.gz",
+            .hash = "thanos-0.0.0-eJfvPdA6AwB-xjInQYMbL2NzN0bOjRhCp3_dt0ALe9LB",
         },
     },
     // Specifies the set of files and directories that are included in this package.
@@ -48,6 +49,7 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "native",
         // For example...
         //"LICENSE",
         //"README.md",
