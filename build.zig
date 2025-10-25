@@ -98,6 +98,43 @@ pub fn build(b: *std.Build) void {
     // by passing `--prefix` or `-p`.
     b.installArtifact(exe);
 
+    // Also build a shared library for Grim plugin integration
+    const lib = b.addLibrary(.{
+        .name = "thanos_grim",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "thanos", .module = thanos.module("thanos") },
+            },
+        }),
+        .linkage = .dynamic, // Shared library
+    });
+    lib.linkLibC();
+    b.installArtifact(lib);
+
+    // Build native bridge library (FFI-compatible C ABI)
+    const bridge_lib = b.addLibrary(.{
+        .name = "thanos_grim_bridge",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("native/bridge.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "thanos", .module = thanos.module("thanos") },
+            },
+        }),
+        .linkage = .dynamic,
+    });
+    bridge_lib.linkLibC();
+
+    b.installArtifact(bridge_lib);
+
+    // Create a step to build just the bridge
+    const bridge_step = b.step("bridge", "Build the FFI bridge library only");
+    bridge_step.dependOn(&b.addInstallArtifact(bridge_lib, .{}).step);
+
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
     // This will evaluate the `run` step rather than the default step.
@@ -144,12 +181,28 @@ pub fn build(b: *std.Build) void {
     // A run step that will run the second test executable.
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
+    // Creates an executable that will run `test` blocks from the bridge module.
+    const bridge_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("native/bridge.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "thanos", .module = thanos.module("thanos") },
+            },
+        }),
+    });
+
+    // A run step that will run the bridge test executable.
+    const run_bridge_tests = b.addRunArtifact(bridge_tests);
+
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
     // make the two of them run in parallel.
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    test_step.dependOn(&run_bridge_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //

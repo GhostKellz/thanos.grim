@@ -1,0 +1,348 @@
+-- Thanos AI Plugin for Grim
+-- Universal AI gateway with multi-provider support
+--
+-- Commands:
+--   :ThanosComplete   - Complete code at cursor
+--   :ThanosAsk        - Ask AI a question
+--   :ThanosChat       - Open chat window
+--   :ThanosSwitch     - Switch AI provider
+--   :ThanosProviders  - List available providers
+--   :ThanosStats      - Show statistics
+--   :ThanosHealth     - Check provider health
+
+-- Load FFI library
+local ffi = require("ffi")
+
+-- Declare C functions from libthanos_grim_bridge.so
+ffi.cdef[[
+    // Initialization
+    int thanos_grim_init(const char* config_json);
+    int thanos_grim_is_initialized();
+    void thanos_grim_deinit();
+
+    // AI Completion
+    const char* thanos_grim_complete(const char* prompt, const char* language, int max_tokens);
+    const char* thanos_grim_complete_with_provider(const char* prompt, const char* provider, const char* language, int max_tokens);
+
+    // Provider Management
+    const char* thanos_grim_list_providers();
+    int thanos_grim_switch_provider(const char* provider_name);
+    const char* thanos_grim_get_current_provider();
+
+    // Statistics & Health
+    const char* thanos_grim_get_stats();
+    const char* thanos_grim_get_health();
+    int thanos_grim_is_provider_healthy(const char* provider_name);
+
+    // Utilities
+    const char* thanos_grim_version();
+    void thanos_grim_free(const char* str);
+    int thanos_grim_ping();
+    const char* thanos_grim_echo(const char* input);
+]]
+
+-- Load the native library
+local lib_path = os.getenv("THANOS_GRIM_LIB") or "libthanos_grim_bridge.so"
+local lib = ffi.load(lib_path)
+
+-- Plugin state
+local thanos_initialized = false
+local current_provider = "ollama"
+local chat_window = nil
+
+-- Helper function to call and free C strings
+local function call_and_free(fn, ...)
+    local result_ptr = fn(...)
+    if result_ptr == nil then
+        return nil
+    end
+    local result = ffi.string(result_ptr)
+    lib.thanos_grim_free(result_ptr)
+    return result
+end
+
+-- Initialize plugin
+function setup()
+    -- Test FFI connection first
+    local ping_result = lib.thanos_grim_ping()
+    if ping_result ~= 42 then
+        show_error("FFI bridge test failed! Expected 42, got: " .. tostring(ping_result))
+        return false
+    end
+
+    -- Initialize Thanos with config
+    local config_json = '{"mode": "hybrid", "primary_provider": "ollama"}'
+    local init_result = lib.thanos_grim_init(config_json)
+
+    if init_result ~= 1 then
+        show_error("Thanos initialization failed")
+        return false
+    end
+
+    thanos_initialized = true
+
+    -- Get version
+    local version = ffi.string(lib.thanos_grim_version())
+
+    -- Register commands
+    register_command("Thanos", "thanos_chat_handler", "Open AI chat (shorthand for :ThanosChat)")
+    register_command("ThanosComplete", "thanos_complete_handler", "AI code completion at cursor")
+    register_command("ThanosAsk", "thanos_ask_handler", "Ask AI a question")
+    register_command("ThanosChat", "thanos_chat_handler", "Open AI chat window")
+    register_command("ThanosSwitch", "thanos_switch_handler", "Switch AI provider")
+    register_command("ThanosProviders", "thanos_providers_handler", "List available AI providers")
+    register_command("ThanosStats", "thanos_stats_handler", "Show AI statistics")
+    register_command("ThanosHealth", "thanos_health_handler", "Check provider health")
+
+    -- Register keybindings
+    register_keybind("<leader>ac", "ThanosChat", "Open AI chat")
+    register_keybind("<leader>ak", "ThanosComplete", "AI complete code")
+    register_keybind("<leader>ap", "ThanosSwitch", "Switch provider")
+    register_keybind("<leader>as", "ThanosStats", "Show AI stats")
+    register_keybind("<leader>ah", "ThanosHealth", "Provider health")
+
+    show_message("🌌 Thanos AI v" .. version .. " loaded ✅")
+    show_message("Available providers: Ollama, Claude, GPT-4, GitHub Copilot")
+
+    return true
+end
+
+-- Command: Complete code at cursor
+function thanos_complete_handler()
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    -- Get current buffer content and context
+    local buffer_text = get_buffer_text()
+    local cursor_pos = get_cursor_position()
+    local language = get_buffer_filetype()
+
+    -- Get text before cursor for context
+    local lines = split_lines(buffer_text)
+    local context = table.concat(lines, "\n", 1, cursor_pos.line)
+
+    -- Show loading indicator
+    show_message("🤖 Thanos: Generating completion...")
+
+    -- Call native function
+    local completion = call_and_free(lib.thanos_grim_complete, context, language or "", 150)
+
+    if not completion then
+        show_error("Completion failed")
+        return
+    end
+
+    -- Insert completion at cursor
+    insert_at_cursor(completion)
+
+    -- Get current provider
+    local provider = call_and_free(lib.thanos_grim_get_current_provider)
+    show_message("✅ Completion generated by " .. (provider or "unknown"))
+end
+
+-- Command: Ask AI a question
+function thanos_ask_handler(args)
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    local question = args or prompt_user("Ask AI:")
+    if not question or question == "" then
+        return
+    end
+
+    show_message("🤖 Asking " .. current_provider .. "...")
+
+    -- Call native function
+    local answer = call_and_free(lib.thanos_grim_complete, question, "", 500)
+
+    if not answer then
+        show_error("Ask failed")
+        return
+    end
+
+    -- Show in popup
+    show_popup("Thanos AI", answer)
+end
+
+-- Command: Open chat window
+function thanos_chat_handler()
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    if chat_window then
+        -- Focus existing chat window
+        focus_window(chat_window)
+    else
+        -- Create new chat window
+        chat_window = create_split_window("Thanos Chat", "vertical", 50)
+
+        -- Set chat window content
+        local welcome = "# Thanos AI Chat\n\nProvider: " .. current_provider .. "\nType your message and press <Enter>\n\n"
+        set_window_text(chat_window, welcome)
+
+        -- Register chat keybindings
+        register_window_keybind(chat_window, "<CR>", "thanos_send_chat_message")
+        register_window_keybind(chat_window, "q", "thanos_close_chat")
+    end
+end
+
+-- Send chat message
+function thanos_send_chat_message()
+    local message = get_current_line()
+    if not message or message == "" then
+        return
+    end
+
+    -- Append message to chat
+    append_to_window(chat_window, "\n**You:** " .. message)
+    append_to_window(chat_window, "\n*Thinking...*")
+
+    -- Call native function
+    local response = call_and_free(lib.thanos_grim_complete, message, "", 500)
+
+    if response then
+        -- Replace "Thinking..." with response
+        replace_last_line(chat_window, "\n**" .. current_provider .. ":** " .. response)
+    else
+        replace_last_line(chat_window, "\n**Error:** Failed to get response")
+    end
+end
+
+-- Close chat window
+function thanos_close_chat()
+    if chat_window then
+        close_window(chat_window)
+        chat_window = nil
+    end
+end
+
+-- Command: Switch provider
+function thanos_switch_handler(args)
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    local provider = args or prompt_user("Provider (ollama/claude/gpt4/copilot):")
+    if not provider or provider == "" then
+        return
+    end
+
+    -- Normalize provider names
+    local provider_map = {
+        claude = "anthropic",
+        gpt4 = "openai",
+        copilot = "github_copilot",
+        grok = "xai"
+    }
+    provider = provider_map[provider] or provider
+
+    -- Call native function
+    local result = lib.thanos_grim_switch_provider(provider)
+
+    if result == 1 then
+        current_provider = provider
+        update_status_line("AI: " .. provider)
+        show_message("Switched to " .. provider .. " ✅")
+    else
+        show_error("Unknown provider: " .. provider)
+        show_message("Valid: ollama, anthropic, openai, github_copilot, xai, gemini")
+    end
+end
+
+-- Command: List providers
+function thanos_providers_handler()
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    -- Call native function
+    local providers_json = call_and_free(lib.thanos_grim_list_providers)
+
+    if not providers_json then
+        show_error("Failed to get providers")
+        return
+    end
+
+    -- Parse JSON (simple parsing for demo)
+    local output = "# Available AI Providers\n\n"
+    output = output .. providers_json
+    output = output .. "\n\n## Current Provider\n" .. current_provider
+
+    show_popup("Thanos Providers", output)
+end
+
+-- Command: Show statistics
+function thanos_stats_handler()
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    -- Call native function
+    local stats_json = call_and_free(lib.thanos_grim_get_stats)
+
+    if not stats_json then
+        show_error("Failed to get stats")
+        return
+    end
+
+    local output = "# Thanos Statistics\n\n"
+    output = output .. "**Current Provider:** " .. current_provider .. "\n\n"
+    output = output .. stats_json
+
+    show_popup("Thanos Stats", output)
+end
+
+-- Command: Check health
+function thanos_health_handler()
+    if not thanos_initialized then
+        show_error("Thanos not initialized")
+        return
+    end
+
+    -- Call native function
+    local health_json = call_and_free(lib.thanos_grim_get_health)
+
+    if not health_json then
+        show_error("Failed to get health status")
+        return
+    end
+
+    local output = "# Provider Health Status\n\n"
+    output = output .. health_json
+
+    show_popup("Thanos Health", output)
+end
+
+-- Cleanup
+function teardown()
+    if chat_window then
+        close_window(chat_window)
+        chat_window = nil
+    end
+
+    if thanos_initialized then
+        lib.thanos_grim_deinit()
+        thanos_initialized = false
+    end
+
+    show_message("Thanos AI plugin unloaded")
+    return true
+end
+
+-- Helper: Split string into lines
+function split_lines(str)
+    local lines = {}
+    for line in str:gmatch("[^\r\n]+") do
+        table.insert(lines, line)
+    end
+    return lines
+end

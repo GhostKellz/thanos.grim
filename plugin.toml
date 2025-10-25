@@ -1,0 +1,54 @@
+# Thanos AI Plugin for Grim
+# Native Zig AI integration with multi-provider support
+
+[plugin]
+name = "thanos"
+version = "0.1.0"
+author = "Ghost Stack <dev@ghoststack.io>"
+description = "Universal AI gateway with code completions, chat, and streaming"
+main = "init.gza"
+license = "MIT"
+homepage = "https://github.com/ghostkellz/thanos.grim"
+min_grim_version = "0.1.0"
+
+[config]
+enable_on_startup = true
+lazy_load = false
+priority = 70  # Load early for AI features
+
+[optimize]
+auto_optimize = true
+hot_functions = ["complete", "chat", "stream"]
+compile_on_install = true
+
+[native]
+library = "native/libthanos_grim.so"
+functions = [
+    "thanos_init",
+    "thanos_complete",
+    "thanos_complete_streaming",
+    "thanos_switch_provider",
+    "thanos_list_providers",
+    "thanos_get_stats"
+]
+build_command = "zig build-lib -dynamic -O ReleaseFast src/root.zig -femit-bin=native/libthanos_grim.so"
+
+[thanos]
+# Default configuration
+default_provider = "ollama"
+fallback_chain = ["ollama", "anthropic", "github_copilot"]
+enable_streaming = true
+cache_enabled = true
+
+# UI settings
+show_provider_in_status = true
+chat_window_width = 50
+syntax_highlighting = true
+
+# Keybindings (can be overridden in Grim config)
+keybinds = [
+    { key = "<leader>ac", command = "ThanosChat" },
+    { key = "<leader>ak", command = "ThanosComplete" },
+    { key = "<leader>ap", command = "ThanosSwitch" },
+    { key = "<leader>as", command = "ThanosStats" }
+]

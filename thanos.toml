@@ -1,0 +1,55 @@
+# Thanos.grim Configuration
+# Place this file in the same directory as your Grim editor instance
+
+[ai]
+mode = "hybrid"  # ollama-heavy, api-heavy, hybrid, custom
+primary_provider = "ollama"
+
+[general]
+debug = true
+request_timeout_ms = 30000
+
+[providers.ollama]
+enabled = true
+endpoint = "http://localhost:11434"
+model = "codellama:13b"
+max_tokens = 2048
+temperature = 0.3
+
+[providers.anthropic]
+enabled = true
+api_key = "${ANTHROPIC_API_KEY}"
+model = "claude-3-5-sonnet-20241022"
+max_tokens = 4096
+temperature = 0.7
+
+[providers.openai]
+enabled = true
+api_key = "${OPENAI_API_KEY}"
+model = "gpt-4-turbo"
+max_tokens = 4096
+temperature = 0.7
+
+[providers.xai]
+enabled = true
+api_key = "${XAI_API_KEY}"
+model = "grok-beta"
+max_tokens = 4096
+temperature = 0.7
+
+[providers.github_copilot]
+enabled = true
+# Auto-fetches token from: gh auth token
+# Run: gh auth login --scopes copilot
+
+[routing]
+# Chat: use any provider
+chat = "anthropic"  # or "openai", "xai", "ollama"
+fallback_chain = ["anthropic", "openai", "xai", "ollama"]
+
+# Autocomplete: fast providers
+autocomplete = "github_copilot"
+fallback_autocomplete = ["ollama"]
+
+[discovery]
+ollama_endpoint = "http://localhost:11434"

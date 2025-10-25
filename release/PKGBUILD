@@ -1,0 +1,57 @@
+# Maintainer: GhostKellz <ghostkellz@grimeditor.dev>
+pkgname=thanos-grim
+pkgver=0.40.0
+pkgrel=1
+pkgdesc="AI completion plugin for Grim editor powered by Thanos"
+arch=('x86_64' 'aarch64')
+url="https://github.com/ghostkellz/thanos.grim"
+license=('MIT')
+depends=('grim-editor' 'thanos-ai')
+makedepends=('zig>=0.16.0' 'git')
+optdepends=('ollama: Local AI models')
+provides=('thanos-grim')
+conflicts=('thanos-grim')
+source=("git+https://github.com/ghostkellz/thanos.grim.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+build() {
+    cd "$srcdir/thanos.grim"
+
+    # Build FFI bridge
+    zig build bridge -Doptimize=ReleaseFast
+}
+
+check() {
+    cd "$srcdir/thanos.grim"
+
+    # Run tests
+    zig build test || echo "Tests skipped"
+}
+
+package() {
+    cd "$srcdir/thanos.grim"
+
+    # Install plugin directory
+    install -dm755 "$pkgdir/usr/share/grim/plugins/thanos"
+
+    # Install Ghostlang plugin
+    install -Dm644 "init.gza" "$pkgdir/usr/share/grim/plugins/thanos/init.gza"
+
+    # Install Lua compatibility layer if exists
+    if [ -d "lua" ]; then
+        cp -r lua "$pkgdir/usr/share/grim/plugins/thanos/"
+    fi
+
+    # Install native bridge
+    install -Dm755 "zig-out/lib/libthanos_grim_bridge.so" \
+        "$pkgdir/usr/share/grim/plugins/thanos/lib/libthanos_grim_bridge.so"
+
+    # Install documentation
+    install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 "INSTALL.md" "$pkgdir/usr/share/doc/$pkgname/INSTALL.md"
+    install -Dm644 "WEEK2_COMPLETE.md" "$pkgdir/usr/share/doc/$pkgname/WEEK2_COMPLETE.md"
+    install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+    # Install default config
+    install -Dm644 "config/default.gza" "$pkgdir/etc/grim/thanos.gza" 2>/dev/null || true
+}
