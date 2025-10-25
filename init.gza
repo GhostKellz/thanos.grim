@@ -102,7 +102,7 @@ function setup()
     register_keybind("<leader>ah", "ThanosHealth", "Provider health")
 
     show_message("🌌 Thanos AI v" .. version .. " loaded ✅")
-    show_message("Available providers: Ollama, Claude, GPT-4, GitHub Copilot")
+    show_message("Available providers: Ollama, Claude, GPT-5, Grok, Gemini")
 
     return true
 end
@@ -229,7 +229,7 @@ function thanos_switch_handler(args)
         return
     end
 
-    local provider = args or prompt_user("Provider (ollama/claude/gpt4/copilot):")
+    local provider = args or prompt_user("Provider (ollama/claude/gpt5/grok):")
     if not provider or provider == "" then
         return
     end
@@ -237,8 +237,7 @@ function thanos_switch_handler(args)
     -- Normalize provider names
     local provider_map = {
         claude = "anthropic",
-        gpt4 = "openai",
-        copilot = "github_copilot",
+        gpt5 = "openai",
         grok = "xai"
     }
     provider = provider_map[provider] or provider
@@ -252,7 +251,7 @@ function thanos_switch_handler(args)
         show_message("Switched to " .. provider .. " ✅")
     else
         show_error("Unknown provider: " .. provider)
-        show_message("Valid: ollama, anthropic, openai, github_copilot, xai, gemini")
+        show_message("Valid: ollama, anthropic, openai, xai, google")
     end
 end
 

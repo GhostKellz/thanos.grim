@@ -5,11 +5,11 @@
 
 **Universal AI Assistant Plugin for Grim Editor**
 
-*Talk to Claude, GPT-4, Grok, Ollama, and more—all from Grim*
+*Talk to Claude, GPT-5, Grok, Ollama, and more—all from Grim*
 
 ![Built with Zig](https://img.shields.io/badge/Built%20with-Zig%200.16-yellow?logo=zig&style=for-the-badge)
 ![Grim Plugin](https://img.shields.io/badge/Editor-Grim-gray?style=for-the-badge)
-![Multi-Provider](https://img.shields.io/badge/Providers-7+-purple?style=for-the-badge)
+![Multi-Provider](https://img.shields.io/badge/Providers-6+-purple?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 [![GitHub Stars](https://img.shields.io/github/stars/ghostkellz/thanos.grim?style=social)](https://github.com/ghostkellz/thanos.grim)
@@ -26,7 +26,7 @@
 ### Why Thanos.grim?
 
 - 🚀 **Native Performance** - Written in Zig, no FFI overhead
-- 🎯 **Multi-Provider** - Switch between Claude, GPT-4, Ollama, and more
+- 🎯 **Multi-Provider** - Switch between Claude, GPT-5, Ollama, and more
 - 💰 **Cost Optimized** - Built-in caching and intelligent routing via Omen
 - 🔒 **Privacy First** - Local-first with Ollama, cloud when you need it
 - ⚡ **Zero Config** - Works out of the box with sensible defaults
@@ -38,9 +38,9 @@
 
 ### Core Capabilities
 
-- ✅ **Code Completion** - Inline AI completions like GitHub Copilot
+- ✅ **Code Completion** - Inline AI completions
 - ✅ **AI Chat** - Ask questions about your code
-- ✅ **Multi-Provider Support** - Claude, GPT-4, Grok, Ollama, GitHub Copilot
+- ✅ **Multi-Provider Support** - Claude, GPT-5, Grok, Ollama, Gemini
 - ✅ **Smart Routing** - Automatic provider selection via Omen
 - ✅ **Request Caching** - Save money with LRU cache + TTL
 - ✅ **Retry Logic** - Exponential backoff with circuit breaker
@@ -52,9 +52,8 @@
 |----------|--------|----------|
 | 🦙 **Ollama** | ✅ | Local, free, privacy-focused |
 | 🧠 **Anthropic Claude** | ✅ | Best for complex code generation |
-| 🤖 **OpenAI GPT-4** | ✅ | General-purpose AI |
+| 🤖 **OpenAI GPT-5** | ✅ | General-purpose AI |
 | 🚀 **xAI Grok** | ✅ | Fast, conversational |
-| 🐙 **GitHub Copilot** | ✅ | If you have a subscription |
 | 🌐 **Google Gemini** | ✅ | Multimodal support |
 | 🔀 **Omen Gateway** | ✅ | Intelligent routing & cost optimization |
 
@@ -292,7 +291,7 @@ thanos.grim is a thin wrapper around the [Thanos library](https://github.com/gho
      │
   ┌──┴──┬──────┬─────────┐
   ▼     ▼      ▼         ▼
-Claude GPT-4 Grok  Copilot
+Claude GPT-5 Grok  Gemini
 ```
 
 ---
@@ -336,7 +335,6 @@ Built with:
 - **[Zig](https://ziglang.org/)** - Performance and safety
 
 Inspired by:
-- **[GitHub Copilot](https://copilot.github.com/)** - AI code completion
 - **[Claude Code](https://claude.ai/claude-code)** - AI pair programming
 - **[Zed AI](https://zed.dev/)** - Editor-native AI
 
